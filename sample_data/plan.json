@@ -1,0 +1,66 @@
+{
+    "expand": "master,actions,stages,branches,variableContext",
+    "projectKey": "WPPSDK",
+    "projectName": "WPP - SDKs",
+    "project": {
+        "key": "WPPSDK",
+        "name": "WPP - SDKs",
+        "description": "Owner: Tobias Funk",
+        "link": {
+            "href": "https://bamboo.act.ssa.nortonlifelock.com/rest/api/latest/project/WPPSDK",
+            "rel": "self"
+        }
+    },
+    "master": {
+        "shortName": "Real-time Protection SDK",
+        "shortKey": "RTPSDK",
+        "type": "chain",
+        "enabled": true,
+        "link": {
+            "href": "https://bamboo.act.ssa.nortonlifelock.com/rest/api/latest/plan/WPPSDK-RTPSDK",
+            "rel": "self"
+        },
+        "key": "WPPSDK-RTPSDK",
+        "name": "WPP - SDKs - Real-time Protection SDK",
+        "planKey": {
+            "key": "WPPSDK-RTPSDK"
+        }
+    },
+    "shortName": "bugfix-WPP-11389-issues-regarding-the-antitamper-interface",
+    "buildName": "bugfix-WPP-11389-issues-regarding-the-antitamper-interface",
+    "shortKey": "RTPSDK53",
+    "type": "chain_branch",
+    "enabled": true,
+    "link": {
+        "href": "https://bamboo.act.ssa.nortonlifelock.com/rest/api/latest/plan/WPPSDK-RTPSDK53",
+        "rel": "self"
+    },
+    "isFavourite": false,
+    "isActive": true,
+    "isBuilding": true,
+    "averageBuildTimeInSeconds": 273495.0,
+    "actions": {
+        "size": 6,
+        "start-index": 0,
+        "max-result": 6
+    },
+    "stages": {
+        "size": 5,
+        "start-index": 0,
+        "max-result": 5
+    },
+    "branches": {
+        "size": 0,
+        "start-index": 0,
+        "max-result": 0
+    },
+    "variableContext": {
+        "size": 40,
+        "max-results": 40
+    },
+    "key": "WPPSDK-RTPSDK53",
+    "name": "WPP - SDKs - Real-time Protection SDK - bugfix-WPP-11389-issues-regarding-the-antitamper-interface",
+    "planKey": {
+        "key": "WPPSDK-RTPSDK53"
+    }
+} // JavaScript source code
