@@ -160,13 +160,12 @@ class _MyHomePageState extends State<MyHomePage> with SingleTickerProviderStateM
   }
 
   intitBuilds() {
-    var plans = Config().bambooBuildPlans;
+    var plans = _config.bambooBuildPlans;
     _builds = plans.map((e) => Build(e)).toList();
   }
 
   @override
   void initState() {
-    intitBuilds();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initAsync();
     });
@@ -182,6 +181,7 @@ class _MyHomePageState extends State<MyHomePage> with SingleTickerProviderStateM
     if (error.isNotEmpty) {
       _setStatusText(error);
     }
+    intitBuilds();
     for (var element in _builds) {
       _fetchStatus(element);
     }
