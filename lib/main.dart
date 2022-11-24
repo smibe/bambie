@@ -65,11 +65,11 @@ class Config {
     }
   }
 
-  var bambooUrl = "https://bamboo.act.ssa.nortonlifelock.com";
+  var bambooUrl = "https://bamboo.com";
   var bambooPassword = "";
-  var bambooUser = "gerhard.herbert";
+  var bambooUser = "firstname.lastname";
 
-  List<String> bambooBuildPlans = ["WPPSDK-RTPSDK", "WPPSDK-RTPSDK53", "WPPSDK-RTPSDK102", "WPPSDK-RTPSDK104", "WPPSDK-RTPSDK87"];
+  List<String> bambooBuildPlans = ["project-plan1", "project-plan2", "project-plan2"];
 }
 
 class MyHomePage extends StatefulWidget {
