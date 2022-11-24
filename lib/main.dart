@@ -21,6 +21,8 @@ class Build {
   String name = "";
   String plan = "";
   int number = 0;
+  Duration buildDuration = Duration.zero;
+  Duration averageBuildDuration = Duration.zero;
   String get shortName {
     var words = name.split("-");
     return words.length > 3 ? "${words[1]}-${words[2]}" : name;
@@ -125,6 +127,8 @@ class _MyHomePageState extends State<MyHomePage> with SingleTickerProviderStateM
     }
   }
 
+  format(Duration d) => d.toString().split('.').first.padLeft(8, "0");
+
   void _fetchStatus(Build build) async {
     try {
       var response = await get(Uri.parse('${_config.bambooUrl}/rest/api/latest/plan/${build.plan}'),
@@ -143,16 +147,30 @@ class _MyHomePageState extends State<MyHomePage> with SingleTickerProviderStateM
       }
       var planResult = json.decode(buildResult.body);
       var buildNumber = planResult["number"] + 1;
+      var buildDuration = Duration.zero;
+      var averageBuildDuration = Duration(seconds: (planStatus["averageBuildTimeInSeconds"] as double).toInt());
 
       if (state != BuildStatus.inProgress) {
         state = planResult["buildState"] == 'Failed' ? BuildStatus.failure : BuildStatus.success;
         buildNumber = planResult["number"];
+        buildDuration = Duration(seconds: planResult["buildDurationInSeconds"]);
+      } else {
+        buildResult = await get(Uri.parse('${_config.bambooUrl}/rest/api/latest/result/${build.plan}-$buildNumber'),
+            headers: <String, String>{'authorization': _basicAuth, 'Accept': 'application/json'});
+        if (buildResult.statusCode != HttpStatus.ok) {
+          _setStatusText("Error fetching build plan. Error: ${buildResult.statusCode}");
+          return;
+        }
+        planResult = json.decode(buildResult.body);
+        buildDuration = Duration(milliseconds: planResult["progress"]["buildTime"]);
       }
 
       setState(() {
         build.status = state;
         build.name = planStatus["shortName"];
         build.number = buildNumber;
+        build.buildDuration = buildDuration;
+        build.averageBuildDuration = averageBuildDuration;
       });
     } catch (e) {
       _setStatusText("Error fetching status for build ${build.shortName}. Error: ${e.toString()}");
@@ -270,28 +288,53 @@ class _MyHomePageState extends State<MyHomePage> with SingleTickerProviderStateM
               height: 10,
             ),
             for (var plan in _builds)
-              Row(
+              Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  plan.status != BuildStatus.inProgress
-                      ? Icon(_getIcon(plan.status), color: _getStatusColor(plan.status))
-                      : AnimatedRotation(
-                          turns: 100,
-                          duration: Duration(minutes: 120),
-                          child: Icon(Icons.autorenew, color: _getStatusColor(plan.status)),
-                        ),
-                  SizedBox(
-                    width: 10,
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      plan.status != BuildStatus.inProgress
+                          ? Icon(_getIcon(plan.status), color: _getStatusColor(plan.status))
+                          : AnimatedRotation(
+                              turns: 100,
+                              duration: Duration(minutes: 120),
+                              child: Icon(Icons.autorenew, color: _getStatusColor(plan.status)),
+                            ),
+                      SizedBox(
+                        width: 3,
+                      ),
+                      Text(plan.name),
+                      SizedBox(
+                        width: 3,
+                      ),
+                      Text("[${plan.number}]"),
+                      SizedBox(
+                        width: 3,
+                      ),
+                      SizedBox(
+                        width: 10,
+                      ),
+                      plan.status != BuildStatus.inProgress
+                          ? TextButton(onPressed: () => _triggerBuild(plan), child: const Text("Run"))
+                          : SizedBox(width: 0),
+                      plan.status != BuildStatus.inProgress
+                          ? TextButton(onPressed: () => _triggerRerun(plan), child: const Text("Re-run"))
+                          : TextButton(onPressed: () => _triggerStop(plan), child: const Text("Stop")),
+                      TextButton(onPressed: () => _launchBuild(plan), child: const Text("Open"))
+                    ],
                   ),
-                  Text(plan.name),
-                  Text("[${plan.number}]"),
-                  plan.status != BuildStatus.inProgress
-                      ? TextButton(onPressed: () => _triggerBuild(plan), child: const Text("Run"))
-                      : SizedBox(width: 0),
-                  plan.status != BuildStatus.inProgress
-                      ? TextButton(onPressed: () => _triggerRerun(plan), child: const Text("Re-run"))
-                      : TextButton(onPressed: () => _triggerStop(plan), child: const Text("Stop")),
-                  TextButton(onPressed: () => _launchBuild(plan), child: const Text("Open"))
+                  Row(
+                    children: [
+                      SizedBox(
+                        width: 25,
+                      ),
+                      Text(_getBuildDuration(plan)),
+                    ],
+                  ),
+                  SizedBox(
+                    height: 10,
+                  ),
                 ],
               ),
           ],
@@ -325,5 +368,10 @@ class _MyHomePageState extends State<MyHomePage> with SingleTickerProviderStateM
         ),
       ),
     );
+  }
+
+  String _getBuildDuration(Build plan) {
+    if (plan.buildDuration == Duration.zero) return "";
+    return "duration: ${format(plan.buildDuration)}   average: ${format(plan.averageBuildDuration)}";
   }
 }
