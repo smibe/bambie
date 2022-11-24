@@ -14,5 +14,6 @@ C:\Users\Me\Documents\bambie.json:
   "buildPlans": [ "project-plan"1, "project-plan2" ],
   "bambooUser": "user.name",
   "bambooPassword": "password"
-}```
+}
+```
 
