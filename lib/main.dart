@@ -16,6 +16,33 @@ void main() {
   runApp(const MyApp());
 }
 
+class Step {
+  String startPattern = "";
+  String endPattern = "";
+  String name = "";
+  RegExp? nameRegexp;
+  Duration duration = Duration.zero;
+  Step({this.startPattern = "", this.endPattern = "", this.name = "", this.nameRegexp, this.duration = Duration.zero});
+}
+
+class Job {
+  String name = "";
+  String key = "";
+  BuildStatus status = BuildStatus.undefined;
+  Duration duration = Duration.zero;
+
+  bool _stepsExpanded = false;
+  List<Step> steps = [];
+}
+
+class Stage {
+  String name = "";
+  BuildStatus status = BuildStatus.undefined;
+
+  bool _jobsExpanded = false;
+  List<Job> jobs = [];
+}
+
 class Build {
   BuildStatus status = BuildStatus.undefined;
   String name = "";
@@ -27,6 +54,9 @@ class Build {
     var words = name.split("-");
     return words.length > 3 ? "${words[1]}-${words[2]}" : name;
   }
+
+  bool _stagesExpanded = false;
+  List<Stage> stages = [];
 
   Build(this.plan);
 }
@@ -264,7 +294,138 @@ class _MyHomePageState extends State<MyHomePage> with SingleTickerProviderStateM
     }
   }
 
+  List<Step> buildStepPatterns = [
+    Step(
+        startPattern: "Starting task 'Checkout Default Repository'",
+        endPattern: "Finished task: 'Checkout Default Repository'",
+        name: "Checkout"),
+    Step(startPattern: "Starting task 'Build'", endPattern: "Finished task 'Build'", name: "Build"),
+    Step(startPattern: "Starting task 'Build Update'", endPattern: "Finished task 'Build Update'", name: "Build Update"),
+    Step(startPattern: "Starting task 'Public PDB'", endPattern: "Finished task 'Public PDB'", name: "Public PDB"),
+  ];
+
   String get _basicAuth => 'Basic ${base64Encode(utf8.encode('${_config.bambooUser}:${_config.bambooPassword}'))}';
+
+  Widget createMainPage() {
+    return Padding(
+      padding: const EdgeInsets.all(8.0),
+      child: ListView(
+        children: <Widget>[
+          SizedBox(
+            height: 10,
+          ),
+          Text(
+            _config.bambooUrl,
+            style: Theme.of(context).textTheme.headlineSmall,
+          ),
+          SizedBox(
+            height: 10,
+          ),
+          for (var plan in _builds)
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    plan.status != BuildStatus.inProgress
+                        ? Icon(_getIcon(plan.status), color: _getStatusColor(plan.status))
+                        : AnimatedRotation(
+                            turns: 100,
+                            duration: Duration(minutes: 120),
+                            child: Icon(Icons.autorenew, color: _getStatusColor(plan.status)),
+                          ),
+                    SizedBox(
+                      width: 3,
+                    ),
+                    Text(plan.name),
+                    SizedBox(
+                      width: 3,
+                    ),
+                    Text("[${plan.number}]"),
+                    SizedBox(
+                      width: 3,
+                    ),
+                    SizedBox(
+                      width: 10,
+                    ),
+                    plan.status != BuildStatus.inProgress
+                        ? TextButton(onPressed: () => _triggerBuild(plan), child: const Text("Run"))
+                        : SizedBox(width: 0),
+                    plan.status != BuildStatus.inProgress
+                        ? TextButton(onPressed: () => _triggerRerun(plan), child: const Text("Re-run"))
+                        : TextButton(onPressed: () => _triggerStop(plan), child: const Text("Stop")),
+                    TextButton(onPressed: () => _launchBuild(plan), child: const Text("Open"))
+                  ],
+                ),
+                Row(
+                  children: [
+                    SizedBox(
+                      width: 25,
+                    ),
+                    IconButton(
+                        icon: Icon(plan._stagesExpanded ? Icons.expand_less : Icons.expand_more),
+                        onPressed: () => _toggleStageDetails(plan)),
+                    Text(_getBuildDuration(plan)),
+                  ],
+                ),
+                if (plan._stagesExpanded)
+                  for (var stage in plan.stages)
+                    Column(
+                      children: [
+                        Row(
+                          children: [
+                            SizedBox(
+                              width: 50,
+                            ),
+                            IconButton(
+                                icon: Icon(stage._jobsExpanded ? Icons.expand_less : Icons.expand_more),
+                                onPressed: () => _toggleJobDetails(stage)),
+                            SizedBox(
+                              width: 3,
+                            ),
+                            Text(stage.name),
+                            SizedBox(
+                              width: 3,
+                            ),
+                            SizedBox(
+                              width: 3,
+                            ),
+                            Text(_getStageDuration(stage)),
+                          ],
+                        ),
+                        if (stage._jobsExpanded)
+                          for (var job in stage.jobs)
+                            Row(
+                              children: [
+                                SizedBox(
+                                  width: 75,
+                                ),
+                                IconButton(
+                                    icon: Icon(job._stepsExpanded ? Icons.expand_less : Icons.expand_more),
+                                    onPressed: () => _toggleStepsDetails(job)),
+                                Icon(_getIcon(job.status), color: _getStatusColor(job.status)),
+                                SizedBox(
+                                  width: 3,
+                                ),
+                                Text(job.name),
+                                SizedBox(
+                                  width: 3,
+                                ),
+                                Text(job.duration.toString()),
+                              ],
+                            ),
+                      ],
+                    ),
+                SizedBox(
+                  height: 10,
+                ),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -272,74 +433,7 @@ class _MyHomePageState extends State<MyHomePage> with SingleTickerProviderStateM
       appBar: AppBar(
         title: Text(widget.title),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.start,
-          children: <Widget>[
-            SizedBox(
-              height: 10,
-            ),
-            Text(
-              _config.bambooUrl,
-              style: Theme.of(context).textTheme.headlineSmall,
-            ),
-            SizedBox(
-              height: 10,
-            ),
-            for (var plan in _builds)
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      plan.status != BuildStatus.inProgress
-                          ? Icon(_getIcon(plan.status), color: _getStatusColor(plan.status))
-                          : AnimatedRotation(
-                              turns: 100,
-                              duration: Duration(minutes: 120),
-                              child: Icon(Icons.autorenew, color: _getStatusColor(plan.status)),
-                            ),
-                      SizedBox(
-                        width: 3,
-                      ),
-                      Text(plan.name),
-                      SizedBox(
-                        width: 3,
-                      ),
-                      Text("[${plan.number}]"),
-                      SizedBox(
-                        width: 3,
-                      ),
-                      SizedBox(
-                        width: 10,
-                      ),
-                      plan.status != BuildStatus.inProgress
-                          ? TextButton(onPressed: () => _triggerBuild(plan), child: const Text("Run"))
-                          : SizedBox(width: 0),
-                      plan.status != BuildStatus.inProgress
-                          ? TextButton(onPressed: () => _triggerRerun(plan), child: const Text("Re-run"))
-                          : TextButton(onPressed: () => _triggerStop(plan), child: const Text("Stop")),
-                      TextButton(onPressed: () => _launchBuild(plan), child: const Text("Open"))
-                    ],
-                  ),
-                  Row(
-                    children: [
-                      SizedBox(
-                        width: 25,
-                      ),
-                      Text(_getBuildDuration(plan)),
-                    ],
-                  ),
-                  SizedBox(
-                    height: 10,
-                  ),
-                ],
-              ),
-          ],
-        ),
-      ),
+      body: createMainPage(),
       floatingActionButton: FloatingActionButton(
         onPressed: _fetchAll,
         tooltip: 'FetchStatus',
@@ -373,5 +467,65 @@ class _MyHomePageState extends State<MyHomePage> with SingleTickerProviderStateM
   String _getBuildDuration(Build plan) {
     if (plan.buildDuration == Duration.zero) return "";
     return "duration: ${format(plan.buildDuration)}   average: ${format(plan.averageBuildDuration)}";
+  }
+
+  void _toggleStageDetails(Build build) async {
+    if (build.stages.isEmpty) {
+      var buildResult = await get(
+          Uri.parse('${_config.bambooUrl}/rest/api/latest/result/${build.plan}-${build.number}?expand=plan.stages.stage.plans'),
+          headers: <String, String>{'authorization': _basicAuth, 'Accept': 'application/json'});
+      if (buildResult.statusCode != HttpStatus.ok) {
+        _setStatusText("Error fetching build plan. Error: ${buildResult.statusCode}");
+        return;
+      }
+      build.stages.clear();
+      var planResult = json.decode(buildResult.body);
+      var stages = planResult["plan"]["stages"]["stage"] as List<dynamic>;
+      for (var jsonStage in stages) {
+        var stage = Stage();
+        build.stages.add(stage);
+        stage.name = jsonStage["name"];
+        var plans = jsonStage["plans"]["plan"] as List;
+        for (var jsonJob in plans) {
+          var job = Job();
+          stage.jobs.add(job);
+          job.name = jsonJob["shortName"];
+          job.key = jsonJob["key"];
+          var jobResult = await get(Uri.parse('${_config.bambooUrl}/rest/api/latest/result/${job.key}-${build.number}'),
+              headers: <String, String>{'authorization': _basicAuth, 'Accept': 'application/json'});
+          if (buildResult.statusCode != HttpStatus.ok) {
+            _setStatusText("Error fetching build plan. Error: ${buildResult.statusCode}");
+            return;
+          }
+
+          var jobResultJson = json.decode(jobResult.body);
+          job.status = planResult["buildState"] == 'Failed' ? BuildStatus.failure : BuildStatus.success;
+          job.duration = Duration(seconds: jobResultJson["buildDurationInSeconds"]);
+        }
+        stage.jobs.sort((a, b) => -1 * a.duration.compareTo(b.duration));
+      }
+    }
+
+    setState(() {
+      build._stagesExpanded = !build._stagesExpanded;
+    });
+  }
+
+  String _getStageDuration(Stage stage) {
+    if (stage.jobs.isEmpty) return "";
+
+    return stage.jobs[0].duration.toString().split('.').first.padLeft(8, "0");
+  }
+
+  _toggleJobDetails(Stage stage) {
+    setState(() {
+      stage._jobsExpanded = !stage._jobsExpanded;
+    });
+  }
+
+  _toggleStepsDetails(Job job) {
+    setState(() {
+      job._stepsExpanded = !job._stepsExpanded;
+    });
   }
 }
