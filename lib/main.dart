@@ -176,22 +176,24 @@ class _MyHomePageState extends State<MyHomePage> with SingleTickerProviderStateM
         return;
       }
       var planResult = json.decode(buildResult.body);
-      var buildNumber = planResult["number"] + 1;
+      var buildNumber = planResult["number"];
       var buildDuration = Duration.zero;
       var averageBuildDuration = Duration(seconds: (planStatus["averageBuildTimeInSeconds"] as double).toInt());
 
       if (state != BuildStatus.inProgress) {
         state = planResult["buildState"] == 'Failed' ? BuildStatus.failure : BuildStatus.success;
-        buildNumber = planResult["number"];
         buildDuration = Duration(seconds: planResult["buildDurationInSeconds"]);
       } else {
-        buildResult = await get(Uri.parse('${_config.bambooUrl}/rest/api/latest/result/${build.plan}-$buildNumber'),
-            headers: <String, String>{'authorization': _basicAuth, 'Accept': 'application/json'});
-        if (buildResult.statusCode != HttpStatus.ok) {
-          _setStatusText("Error fetching build plan. Error: ${buildResult.statusCode}");
-          return;
-        }
-        planResult = json.decode(buildResult.body);
+        do {
+          buildNumber++;
+          buildResult = await get(Uri.parse('${_config.bambooUrl}/rest/api/latest/result/${build.plan}-$buildNumber'),
+              headers: <String, String>{'authorization': _basicAuth, 'Accept': 'application/json'});
+          if (buildResult.statusCode != HttpStatus.ok) {
+            _setStatusText("Error fetching build plan. Error: ${buildResult.statusCode}");
+            return;
+          }
+          planResult = json.decode(buildResult.body);
+        } while (planResult["buildReason"] == "Specs configuration updated");
         buildDuration = Duration(milliseconds: planResult["progress"]["buildTime"]);
       }
 
